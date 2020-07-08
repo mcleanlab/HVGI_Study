@@ -4,15 +4,15 @@ This repository will serve to provide public access to data associated with upco
 
 Files include data and code used to generate the figures and statistical analysis for both cytokine and microbiome data presented in the manuscript.
 
-Including:
-
+Data:
 - Count_Data: json formated (.biom) otu count table with taxonomic information
 - Metadata: Clinical sample data (.txt)
 - Tree: Phylogenetic tree (.nwk)
+
+R Code:
 - R Code: Rmarkdown (.Rmd and .html)
 
-Additional metadata and tables associated with this data are also provided:
-
+Stats:
 Comprehensive Chemokine Stats by Responder and Day (.xlsx)
 - Sheets include:
 - Clinical Measures
