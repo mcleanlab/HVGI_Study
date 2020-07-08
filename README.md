@@ -14,7 +14,6 @@ R Code:
 
 Stats:
 Comprehensive Chemokine Stats by Responder and Day (.xlsx)
-- Sheets include:
 - Clinical Measures
 - Chemokine Profiles
 - Anova (By Day and Responders)
