@@ -10,7 +10,7 @@ Data:
 - Tree: Phylogenetic tree (.nwk)
 
 R Code:
-- R Code: Rmarkdown (.Rmd and .html)
+- Rmarkdown (.Rmd and .html)
 
 Stats:
 Comprehensive Chemokine Stats by Responder and Day (.xlsx)
