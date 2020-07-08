@@ -1,0 +1,493 @@
+---
+title: "Human Variation in Gingival Inflammation: R code used to generate figures for the upcoming manuscript"
+author: "Shatha Bamashmous and Kristopher A. Kerns"
+date: "7/7/2020"
+output:
+  html_document: default
+  pdf_document: default
+editor_options: 
+  chunk_output_type: inline
+---
+```{r text, include=FALSE}
+library(knitr)
+opts_chunk$set(tidy.opts=list(width.cutoff=60),tidy=TRUE)
+```
+
+This R code for the upcoming manuscript "Human Variation in Gingival Inflammation" and is meant to provide public access to how both cytokine and microbiome data were analyzed using the R suite and various R packages. These figures were further optimized for visual aesthetics in the final manuscript. Any questions should be sent to corresponding authors also listed in upcoming the manuscript. 
+
+
+### Load Taxonomic Count Data
+```{r load count, message=FALSE, warning=FALSE}
+library(phyloseq)
+jsonbiomfile = "/Users/kriskerns_home/Desktop/Shatha_code_for_Git/all_plaque_feature-table-w-taxonomy.biom"
+countdata=import_biom(jsonbiomfile)
+countdata
+
+#rename ranks
+colnames(tax_table(countdata)) = c("Domain", "Phylum", "Class", "Order", "Family", "Genus", "Species")
+colnames(tax_table(countdata))
+```
+
+
+### Load Metadata 
+```{r load meta, message=FALSE, warning=FALSE}
+#import mapping file for phyloseq
+library(phyloseq)
+metadata = import_qiime_sample_data("/Users/kriskerns_home/Desktop/Shatha_code_for_Git/Human_Variation_EXP_Gingivitis.txt")
+```
+
+### Load Tree
+```{r load tree, message=FALSE, warning=FALSE}
+#import tree file for phyloseq
+tree="/Users/kriskerns_home/Desktop/Shatha_code_for_Git/tree.nwk"
+tree=read_tree(tree)
+```
+
+### Generate Phyloseq Object
+```{r generate phyloseq object, message=FALSE, warning=FALSE}
+set = merge_phyloseq(countdata,metadata,tree)
+set
+```
+
+### Filter and Transform Data
+```{r filter and transform data, message=FALSE, warning=FALSE}
+## remove unassigned taxa
+set <- subset_taxa(set, Phylum != "Unassigned")
+
+#Filtering contamination 
+setord <- subset_taxa(set,  !Genus%in% c("g__Ralstonia","g__Delftia","g__Stenotrophomonas","g__Bradyrhizobium","g__Brevundimonas","g__Bacillus","g__Pseudomonas","g__Sphingomonas","g__Enterobacter","g__Microbacterium","g__Bosea","g__Kocuria","g__Micrococcus","g__Paracoccus","g__Anoxybacillus","g__Leptothrix","g__Lawsonella","g__Gardnerella","g__Arthrospira","g__Agrobacterium","g__Escherichia","g__Porphyrobacter","g__Ochrobactrum","g__Neisseriaceae_[G-1]","g__Flavitalea","g__Finegoldia","g__Bdellovibrio","g__Mesorhizobium","g__Defluvibacter","g__Acinetobacter"))
+
+#log transformation 
+setordlog <- transform_sample_counts(setord, function(x) log(1 + x))
+
+#Transform to percent relative abundance
+setordra = transform_sample_counts(setord, function(x) x / sum(x)*100)
+
+#Test only
+setordrat=subset_samples(setordra, Assignment %in% c("Test"))
+
+#Control only
+setordrac=subset_samples(setordra, Assignment %in%  c("Control"))
+
+#Set Day as Factor
+metadata$Day <- as.factor(metadata$Day)
+```
+
+
+### Figure 2: Differential clinical inflammatory responses and chemokine levels in the three response groups versus controls
+```{r figure 2, message=FALSE, warning=FALSE}
+library(ggplot2)
+library(ggpol)
+
+#PI
+pfig2A <- ggplot(metadata,aes(x=metadata$Day,y=metadata$PI)) + xlab("Day") +ylab("Plaque Index (PI)") +
+                theme(text=element_text(size = 8,face="bold")) +
+                theme(axis.title = element_text(size = 8), axis.text = element_text(size = 8)) +  
+                stat_summary(fun=mean, geom="line", aes(group=Assignment, color = Assignment)) +labs(fill="") + 
+                theme(legend.text = element_text(colour="Black", size = 8)) + 
+                theme(legend.title = element_text(colour="Black", size = 8, face = "bold")) +
+                annotate("rect", xmin = 1.6, xmax = 6.4, ymin = -Inf, ymax = Inf, alpha=0.1) +
+                geom_boxjitter(aes(fill=Assignment, color=Assignment),outlier.color = NA,   errorbar.draw = TRUE,alpha=0.2)
+pfig2A
+
+pfig2E <- ggplot(metadata,aes(x=metadata$Day,y=metadata$PI)) + xlab("Day") +ylab("Plaque Index (PI)") +
+                theme(text=element_text(size = 8,face="bold")) +
+                theme(axis.title = element_text(size = 8), axis.text = element_text(size = 8)) +  
+                stat_summary(fun=mean, geom="line", aes(group=Responders, color = Responders)) +labs(fill="") + 
+                theme(legend.text = element_text(colour="Black", size = 8)) + 
+                theme(legend.title = element_text(colour="Black", size = 8, face = "bold")) +
+                annotate("rect", xmin = 1.6, xmax = 6.4, ymin = -Inf, ymax = Inf, alpha=0.1) +
+                geom_boxjitter(aes(fill=Responders, color=Responders),outlier.color = NA,   errorbar.draw = TRUE,alpha=0.2)
+pfig2E
+
+#GI
+pfig2B <- ggplot(metadata,aes(x=metadata$Day,y=metadata$GI)) + xlab("Day") + ylab("Gingival Index (GI)") + 
+                theme(text=element_text(size = 8,face="bold"))+theme(axis.title = element_text(size = 8), axis.text = element_text(size = 8))+
+                stat_summary(fun=mean, geom="line", aes(group=Assignment, color = Assignment)) + labs(fill="") +  
+                theme(legend.text = element_text(colour="Black", size = 8)) + 
+                theme(legend.title = element_text(colour="Black", size = 10, face = "bold")) + 
+                annotate("rect", xmin = 1.6, xmax = 6.4, ymin = -Inf, ymax = Inf, alpha=0.1) +
+                geom_boxjitter(aes(fill=Assignment, color=Assignment),outlier.color = NA, errorbar.draw = TRUE,alpha=0.2)
+pfig2B
+
+pfig2F <- ggplot(metadata,aes(x=metadata$Day,y=metadata$GI)) + xlab("Day") + ylab("Gingival Index (GI)") + 
+                theme(text=element_text(size = 8,face="bold"))+theme(axis.title = element_text(size = 8), axis.text = element_text(size = 8))+
+                stat_summary(fun=mean, geom="line", aes(group=Responders, color = Responders)) + labs(fill="") +  
+                theme(legend.text = element_text(colour="Black", size = 8)) + 
+                theme(legend.title = element_text(colour="Black", size = 10, face = "bold")) + 
+                annotate("rect", xmin = 1.6, xmax = 6.4, ymin = -Inf, ymax = Inf, alpha=0.1) +
+                geom_boxjitter(aes(fill=Responders, color=Responders),outlier.color = NA, errorbar.draw = TRUE,alpha=0.2)
+pfig2F
+
+#BOP
+pfig2C <- ggplot(metadata,aes(x=metadata$Day,y=metadata$BOP)) + xlab("Day") + ylab("Bleeding On Probing (BOP %)") + 
+              theme(text=element_text(size = 8,face="bold")) + theme(axis.title = element_text(size = 8), axis.text = element_text(size = 8)) +
+              stat_summary(fun=mean, geom="line", aes(group=Assignment, color = Assignment)) + labs(fill="") + 
+              theme(legend.text = element_text(colour="Black", size = 4)) + 
+              theme(legend.title = element_text(colour="Black", size = 4, face = "bold")) +
+              annotate("rect", xmin = 1.6, xmax = 6.4, ymin = -Inf, ymax = Inf, alpha=0.1) +
+              geom_boxjitter(aes(fill=Assignment, color=Assignment),outlier.color = NA, errorbar.draw = TRUE,alpha=0.2)
+pfig2C
+
+pfig2G <- ggplot(metadata,aes(x=metadata$Day,y=metadata$BOP)) + xlab("Day") + ylab("Bleeding On Probing (BOP %)") + 
+              theme(text=element_text(size = 8,face="bold")) + theme(axis.title = element_text(size = 8), axis.text = element_text(size = 8)) +
+              stat_summary(fun=mean, geom="line", aes(group=Responders, color = Responders)) + labs(fill="") + 
+              theme(legend.text = element_text(colour="Black", size = 4)) + 
+              theme(legend.title = element_text(colour="Black", size = 4, face = "bold")) +
+              annotate("rect", xmin = 1.6, xmax = 6.4, ymin = -Inf, ymax = Inf, alpha=0.1) +
+              geom_boxjitter(aes(fill=Responders, color=Responders),outlier.color = NA, errorbar.draw = TRUE,alpha=0.2)
+pfig2G
+
+#GCF  
+pfig2D <- ggplot(metadata,aes(x=metadata$Day,y=metadata$GCF)) + xlab("Day") + ylab("GCF Volume (uL)") + 
+              theme(text=element_text(size = 8,face="bold")) + theme(axis.title = element_text(size = 8), axis.text = element_text(size = 8)) +
+              stat_summary(fun=mean, geom="line", aes(group=Assignment, color = Assignment)) + labs(fill="") + 
+              theme(legend.text = element_text(colour="Black", size = 4)) + 
+              theme(legend.title = element_text(colour="Black", size = 4, face = "bold")) +
+              annotate("rect", xmin = 1.6, xmax = 6.4, ymin = -Inf, ymax = Inf, alpha=0.1) +
+              geom_boxjitter(aes(fill=Assignment, color=Assignment),outlier.color = NA, errorbar.draw = TRUE,alpha=0.2)
+pfig2D
+
+
+pfig2H <- ggplot(metadata,aes(x=metadata$Day,y=metadata$GCF)) + xlab("Day") + ylab("GCF Volume (uL)") + 
+              theme(text=element_text(size = 8,face="bold")) + theme(axis.title = element_text(size = 8), axis.text = element_text(size = 8)) +
+              stat_summary(fun=mean, geom="line", aes(group=Responders, color = Responders)) + labs(fill="") + 
+              theme(legend.text = element_text(colour="Black", size = 4)) + 
+              theme(legend.title = element_text(colour="Black", size = 4, face = "bold")) +
+              annotate("rect", xmin = 1.6, xmax = 6.4, ymin = -Inf, ymax = Inf, alpha=0.1) +
+              geom_boxjitter(aes(fill=Responders, color=Responders),outlier.color = NA, errorbar.draw = TRUE,alpha=0.2)
+pfig2H
+
+#16S rRNA Gene Copies
+pfig2I <- ggplot(metadata,aes(x=metadata$Day,y=metadata$Bacterial_Load)) + xlab("Day") + ylab("16S rRNA Gene Copies (log10)") + 
+              theme(text=element_text(size = 8,face="bold")) + theme(axis.title = element_text(size = 8), axis.text = element_text(size = 8)) +
+              stat_summary(fun=mean, geom="line", aes(group=Responders, color = Responders)) + labs(fill="") + 
+              theme(legend.text = element_text(colour="Black", size = 4)) + 
+              theme(legend.title = element_text(colour="Black", size = 4, face = "bold")) +
+              annotate("rect", xmin = 1.6, xmax = 6.4, ymin = -Inf, ymax = Inf, alpha=0.1) +
+              geom_boxjitter(aes(fill=Responders, color=Responders),outlier.color = NA, errorbar.draw = TRUE,alpha=0.2)
+pfig2I
+
+#MPO
+pfig2J <- ggplot(metadata,aes(x=metadata$Day,y=metadata$MPO)) + xlab("Day") + ylab("MPO (Log10 pg/30s)") + 
+              theme(text=element_text(size = 8,face="bold")) + theme(axis.title = element_text(size = 8), axis.text = element_text(size = 8)) +
+              stat_summary(fun=mean, geom="line", aes(group=Responders, color = Responders)) + labs(fill="") + 
+              theme(legend.text = element_text(colour="Black", size = 4)) + 
+              theme(legend.title = element_text(colour="Black", size = 4, face = "bold")) +
+              annotate("rect", xmin = 1.6, xmax = 6.4, ymin = -Inf, ymax = Inf, alpha=0.1) +
+              geom_boxjitter(aes(fill=Responders, color=Responders),outlier.color = NA, errorbar.draw = TRUE,alpha=0.2)
+pfig2J
+
+#IL-1B
+pfig2K <- ggplot(metadata,aes(x=metadata$Day,y=metadata$IL1b)) + xlab("Day") + ylab("MPO (Log10 pg/30s)") + 
+              theme(text=element_text(size = 8,face="bold")) + theme(axis.title = element_text(size = 8), axis.text = element_text(size = 8)) +
+              stat_summary(fun=mean, geom="line", aes(group=Responders, color = Responders)) + labs(fill="") + 
+              theme(legend.text = element_text(colour="Black", size = 4)) + 
+              theme(legend.title = element_text(colour="Black", size = 4, face = "bold")) +
+              annotate("rect", xmin = 1.6, xmax = 6.4, ymin = -Inf, ymax = Inf, alpha=0.1) +
+              geom_boxjitter(aes(fill=Responders, color=Responders),outlier.color = NA, errorbar.draw = TRUE,alpha=0.2)
+pfig2K
+```
+
+### Figure 3: Relationship between chemokine levels and the three clinical response groups 
+```{r figure 3, message=FALSE, warning=FALSE}
+#Cytokine Heatmap
+#pfig3A (Need Code)
+
+#MIF, MPO, IL-8, Bacterial Load
+#pfig3B (Need Code)
+
+#MIF
+pfig3CD <- ggplot(data=metadata,aes(x=Day,y=MIF)) + xlab("Day") + ylab("MIF (Log10 pg/30s)") + 
+              theme(text=element_text(size = 8,face="bold")) +
+              theme(axis.title = element_text(size = 8), axis.text = element_text(size = 8)) + 
+              stat_summary(na.rm=T,fun=mean, geom="line", aes(group=Responders, color = Responders)) +labs(fill="") +  
+              theme(legend.text = element_text(colour="Black", size = 4)) + 
+              theme(legend.title = element_text(colour="Black", size = 4, face = "bold")) +
+              annotate("rect", xmin = 1.6, xmax = 6.4, ymin = -Inf, ymax = Inf, alpha=0.1) +
+              geom_boxjitter(aes(fill=Responders, color=Responders),outlier.color = NA, errorbar.draw = TRUE,alpha=0.2,na.rm=T)
+pfig3CD
+
+#IL8/CXCL8 
+pfig3EF <- ggplot(data=metadata,aes(x=Day,y=IL8)) + xlab("Day") + ylab("IL8/CXCL8 (Log10 pg/30s)") + 
+              theme(text=element_text(size = 8,face="bold")) +
+              theme(axis.title = element_text(size = 8), axis.text = element_text(size = 8)) + 
+              stat_summary(na.rm=T,fun=mean, geom="line", aes(group=Responders, color = Responders)) +labs(fill="") +  
+              theme(legend.text = element_text(colour="Black", size = 4)) + 
+              theme(legend.title = element_text(colour="Black", size = 4, face = "bold")) +
+              annotate("rect", xmin = 1.6, xmax = 6.4, ymin = -Inf, ymax = Inf, alpha=0.1) +
+              geom_boxjitter(aes(fill=Responders, color=Responders),outlier.color = NA, errorbar.draw = TRUE,alpha=0.2,na.rm=T)
+pfig3EF
+
+#GCP-2
+pfig3GH <- ggplot(data=metadata,aes(x=Day,y=CXCL6)) + xlab("Day") + ylab("GCP-2/CXCL6 (Log10 pg/30s)") + 
+              theme(text=element_text(size = 8,face="bold")) +
+              theme(axis.title = element_text(size = 8), axis.text = element_text(size = 8)) + 
+              stat_summary(na.rm=T,fun=mean, geom="line", aes(group=Responders, color = Responders)) +labs(fill="") +  
+              theme(legend.text = element_text(colour="Black", size = 4)) + 
+              theme(legend.title = element_text(colour="Black", size = 4, face = "bold")) +
+              annotate("rect", xmin = 1.6, xmax = 6.4, ymin = -Inf, ymax = Inf, alpha=0.1) +
+              geom_boxjitter(aes(fill=Responders, color=Responders),outlier.color = NA, errorbar.draw = TRUE,alpha=0.2,na.rm=T)
+pfig3GH
+```
+
+### Figure 4: Changes in levels of chemokines involved in bone homeostasis following induction of reversible bone-sparing gingival inflammation
+```{r figure 4, message=FALSE, warning=FALSE}
+#MIP-1a/CCL3
+pfig4A <- ggplot(data=metadata,aes(x=Day,y=CCL3)) + xlab("Day") + ylab("MIP-1a/CCL3 (Log10 pg/30s)") + 
+              theme(text=element_text(size = 8,face="bold")) +
+              theme(axis.title = element_text(size = 8), axis.text = element_text(size = 8)) + 
+              stat_summary(na.rm=T,fun.y = mean , geom="line", aes(group=Responders, color = Responders)) +labs(fill="") +  
+              theme(legend.text = element_text(colour="Black", size = 4)) + 
+              theme(legend.title = element_text(colour="Black", size = 4, face = "bold")) +
+              annotate("rect", xmin = 1.6, xmax = 6.4, ymin = -Inf, ymax = Inf, alpha=0.1) +
+              geom_boxjitter(aes(fill=Responders, color=Responders),outlier.color = NA, errorbar.draw = TRUE,alpha=0.2,na.rm=T)
+pfig4A
+
+#MCP-1/CCL2
+pfig4B <- ggplot(data=metadata,aes(x=Day,y=CCL2)) + xlab("Day") + ylab("MCP-1/CCL2 (Log10 pg/30s)") + 
+              theme(text=element_text(size = 8,face="bold")) +
+              theme(axis.title = element_text(size = 8), axis.text = element_text(size = 8)) + 
+              stat_summary(na.rm=T,fun=mean, geom="line", aes(group=Responders, color = Responders)) +labs(fill="") +  
+              theme(legend.text = element_text(colour="Black", size = 4)) + 
+              theme(legend.title = element_text(colour="Black", size = 4, face = "bold")) +
+              annotate("rect", xmin = 1.6, xmax = 6.4, ymin = -Inf, ymax = Inf, alpha=0.1) +
+              geom_boxjitter(aes(fill=Responders, color=Responders),outlier.color = NA, errorbar.draw = TRUE,alpha=0.2,na.rm=T)
+pfig4B
+
+#I-309/CCL20
+pfig4C <- ggplot(data=metadata,aes(x=Day,y=CCL20)) + xlab("Day") + ylab("I-309/CCL20 (Log10 pg/30s)") + 
+              theme(text=element_text(size = 8,face="bold")) +
+              theme(axis.title = element_text(size = 8), axis.text = element_text(size = 8)) + 
+              stat_summary(na.rm=T,fun=mean, geom="line", aes(group=Responders, color = Responders)) +labs(fill="") +  
+              theme(legend.text = element_text(colour="Black", size = 4)) + 
+              theme(legend.title = element_text(colour="Black", size = 4, face = "bold")) +
+              annotate("rect", xmin = 1.6, xmax = 6.4, ymin = -Inf, ymax = Inf, alpha=0.1) +
+              geom_boxjitter(aes(fill=Responders, color=Responders),outlier.color = NA, errorbar.draw = TRUE,alpha=0.2,na.rm=T)
+pfig4C
+
+#SCYB16/CXCL16
+pfig4D <- ggplot(data=metadata,aes(x=Day,y=CXCL16)) + xlab("Day") + ylab("SCYB16/CXCL16 (Log10 pg/30s)") + 
+              theme(text=element_text(size = 8,face="bold")) +
+              theme(axis.title = element_text(size = 8), axis.text = element_text(size = 8)) + 
+              stat_summary(na.rm=T,fun=mean, geom="line", aes(group=Responders, color = Responders)) +labs(fill="") +  
+              theme(legend.text = element_text(colour="Black", size = 4)) + 
+              theme(legend.title = element_text(colour="Black", size = 4, face = "bold")) +
+              annotate("rect", xmin = 1.6, xmax = 6.4, ymin = -Inf, ymax = Inf, alpha=0.1) +
+              geom_boxjitter(aes(fill=Responders, color=Responders),outlier.color = NA, errorbar.draw = TRUE,alpha=0.2,na.rm=T)
+pfig4D
+
+#Fractalkine/CX3CL1
+pfig4E <- ggplot(data=metadata,aes(x=Day,y=CX3CL1)) + xlab("Day") + ylab("Fractalkine/CX3CL1 (Log10 pg/30s)") + 
+              theme(text=element_text(size = 8,face="bold")) +
+              theme(axis.title = element_text(size = 8), axis.text = element_text(size = 8)) + 
+              stat_summary(na.rm=T,fun=mean, geom="line", aes(group=Responders, color = Responders)) +labs(fill="") +  
+              theme(legend.text = element_text(colour="Black", size = 4)) + 
+              theme(legend.title = element_text(colour="Black", size = 4, face = "bold")) +
+              annotate("rect", xmin = 1.6, xmax = 6.4, ymin = -Inf, ymax = Inf, alpha=0.1) +
+              geom_boxjitter(aes(fill=Responders, color=Responders),outlier.color = NA, errorbar.draw = TRUE,alpha=0.2,na.rm=T)
+pfig4E
+
+#MPIF-1/CCL23
+pfig4F <- ggplot(data=metadata,aes(x=Day,y=CCL23)) + xlab("Day") + ylab("MPIF-1/CCL23 (Log10 pg/30s)") + 
+              theme(text=element_text(size = 8,face="bold")) +
+              theme(axis.title = element_text(size = 8), axis.text = element_text(size = 8)) + 
+              stat_summary(na.rm=T,fun=mean, geom="line", aes(group=Responders, color = Responders)) +labs(fill="") +  
+              theme(legend.text = element_text(colour="Black", size = 4)) + 
+              theme(legend.title = element_text(colour="Black", size = 4, face = "bold")) +
+              annotate("rect", xmin = 1.6, xmax = 6.4, ymin = -Inf, ymax = Inf, alpha=0.1) +
+              geom_boxjitter(aes(fill=Responders, color=Responders),outlier.color = NA, errorbar.draw = TRUE,alpha=0.2,na.rm=T)
+pfig4F
+
+```
+
+### Figure 5: Temporal changes in microbial diversity and taxonomy vary by inflammatory responder type
+```{r figure 5, message=FALSE, warning=FALSE}
+#Faiths Alpha Diversity
+#pfig5A (Need Code)
+
+#NMDS Beta Diversity
+set.seed(123)
+library(ggConvexHull)
+
+#Calculate Unweighted Unifrac Distances
+ordun <- ordinate(setordlog, "NMDS", "unifrac")
+
+#NMDS
+pfig5B = plot_ordination(setordlog, ordun ,color="Responders",  type="sample", title="NMDS of Unweighted UniFrac") +facet_wrap(~Day, 1) +
+              geom_convexhull(alpha=0.2,aes(fill = Responders)) + 
+              theme(axis.title = element_text(size = 8), axis.text = element_text(size = 6), axis.title.y = element_text(margin=margin(0,0,0,0))) +
+              theme(axis.title.x = element_text(margin=margin(0,0,0,0)),axis.text.x =element_text(angle=90)) +
+              theme(plot.title = element_text(size=10),strip.text = element_text(size=8)) +
+              theme(legend.position = "bottom")
+pfig5B$layers<-pfig5B$layers[-1]
+pfig5B<-pfig5B+geom_point(size = 1)
+pfig5B
+
+#Top Phyla Over Time by Responder
+library(phyloseq)
+library(gridExtra)
+library(microbiome)
+library(rstatix)
+library(ggpubr)
+
+#Agglomerate Data at the Phylum Level
+SB_asv_f_ra_glom_phy <- tax_glom(setordra, taxrank = "Phylum")
+
+#Phylum of Interest
+Phyla_oi <- c("p__Fusobacteria","p__Firmicutes","p__Bacteroidetes","p__Actinobacteria")
+
+#Filter Phyloseq Object for Phylum of Interest
+SB_asv_f_ra_glom_phy_poi <- subset_taxa(SB_asv_f_ra_glom_phy, Phylum %in% Phyla_oi)
+
+#Convert Phyloseq Object to a data.frame
+SB_asv_f_ra_glom_phy_poi_df <- psmelt(SB_asv_f_ra_glom_phy_poi)
+
+#Filter for Phylum of Interest
+SB_asv_f_ra_glom_phy_poi_df_Fuso <- filter(SB_asv_f_ra_glom_phy_poi_df, Phylum == "p__Fusobacteria")
+SB_asv_f_ra_glom_phy_poi_df_Firm <- filter(SB_asv_f_ra_glom_phy_poi_df, Phylum == "p__Firmicutes")
+SB_asv_f_ra_glom_phy_poi_df_Bact <- filter(SB_asv_f_ra_glom_phy_poi_df, Phylum == "p__Bacteroidetes")
+SB_asv_f_ra_glom_phy_poi_df_Actino <- filter(SB_asv_f_ra_glom_phy_poi_df, Phylum == "p__Actinobacteria")
+
+#Fusobacteria
+pfig5C_Fuso <- ggplot(SB_asv_f_ra_glom_phy_poi_df_Fuso, aes(x = as.factor(Day), y = Abundance))+ xlab("Day") + ylab("Relative Abundance (%)") + 
+  theme(text=element_text(size = 8,face="bold")) + 
+  theme(axis.title = element_text(size = 8), axis.text = element_text(size = 8)) + facet_wrap(~ Phylum, scales = 'free', nrow = 2) +
+  stat_summary(na.rm=T,fun=mean, aes(group=Responders,color = Responders), shape = NA) +
+  labs(fill="")+  theme(legend.text = element_text(colour="Black", size = 4)) + 
+  theme(legend.title = element_text(colour="Black", size = 4, face = "bold")) + 
+  annotate("rect", xmin = 1.6, xmax = 6.4, ymin = -Inf, ymax = Inf, alpha=0.1) +
+  geom_boxplot(aes(color = Responders)) +
+  geom_smooth(aes(group = Responders, color = Responders), size = 1, method = "loess", se = FALSE, alpha = 0.1, outlier.colour = NA)
+pfig5C_Fuso
+
+#Firmicutes 
+pfig5C_Firm <- ggplot(SB_asv_f_ra_glom_phy_poi_df_Firm, aes(x = as.factor(Day), y = Abundance))+ xlab("Day") + ylab("Relative Abundance (%)") + 
+  theme(text=element_text(size = 8,face="bold")) + 
+  theme(axis.title = element_text(size = 8), axis.text = element_text(size = 8)) + facet_wrap(~ Phylum, scales = 'free', nrow = 2) +
+  stat_summary(na.rm=T,fun=mean, aes(group=Responders, colour = Responders), shape = NA) +
+  labs(fill="")+  theme(legend.text = element_text(colour="Black", size = 4)) + 
+  theme(legend.title = element_text(colour="Black", size = 4, face = "bold")) + 
+  annotate("rect", xmin = 1.6, xmax = 6.4, ymin = -Inf, ymax = Inf, alpha=0.1) +
+  geom_boxplot(aes(color = Responders)) +
+  geom_smooth(aes(group = Responders, color = Responders), size = 1, method = "loess", se = FALSE, alpha = 0.1, outlier.colour = NA) 
+pfig5C_Firm
+
+#Bacteroidetes
+pfig5C_Bact <- ggplot(SB_asv_f_ra_glom_phy_poi_df_Bact, aes(x = as.factor(Day), y = Abundance))+ xlab("Day") + ylab("Relative Abundance (%)") + 
+  theme(text=element_text(size = 8,face="bold")) + 
+  theme(axis.title = element_text(size = 8), axis.text = element_text(size = 8)) + facet_wrap(~ Phylum, scales = 'free', nrow = 2) +
+  stat_summary(na.rm=T,fun=mean, aes(group=Responders, colour = Responders), shape = NA) +
+  labs(fill="")+  theme(legend.text = element_text(colour="Black", size = 4)) + 
+  theme(legend.title = element_text(colour="Black", size = 4, face = "bold")) + 
+  annotate("rect", xmin = 1.6, xmax = 6.4, ymin = -Inf, ymax = Inf, alpha=0.1) +
+  geom_boxplot(aes(color = Responders)) +
+  geom_smooth(aes(group = Responders, color = Responders), size = 1, method = "loess", se = FALSE, alpha = 0.1, outlier.colour = NA) 
+pfig5C_Bact
+
+#Actinobacteria
+pfig5C_Actino <- ggplot(SB_asv_f_ra_glom_phy_poi_df_Actino, aes(x = as.factor(Day), y = Abundance))+ xlab("Day") + ylab("Relative Abundance (%)") + 
+  theme(text=element_text(size = 8,face="bold")) + 
+  theme(axis.title = element_text(size = 8), axis.text = element_text(size = 8)) + facet_wrap(~ Phylum, scales = 'free', nrow = 2) +
+  stat_summary(na.rm=T,fun=mean, aes(group=Responders,colour = Responders), shape = NA) +
+  labs(fill="")+  theme(legend.text = element_text(colour="Black", size = 4)) + 
+  theme(legend.title = element_text(colour="Black", size = 4, face = "bold")) + 
+  annotate("rect", xmin = 1.6, xmax = 6.4, ymin = -Inf, ymax = Inf, alpha=0.1) +
+  geom_boxplot(aes(color = Responders)) +
+  geom_smooth(aes(group = Responders, color = Responders), size = 1, method = "loess", se = FALSE, alpha = 0.1, outlier.colour = NA)
+pfig5C_Actino
+
+#Top Genera Over Time by Responder
+#Agglomerate Data at the Genus Level
+SB_asv_fra_glom_genus <- tax_glom(setordra, taxrank = "Genus", NArm = TRUE)
+
+#Convert Agglomerated Data into a data.frame
+SB_asv_fra_glom_genus_df <- psmelt(SB_asv_fra_glom_genus)
+
+#Genus of Interest
+Genus_oi <- c("g__Actinomyces","g__Aggregatibacter","g__Campylobacter","g__Capnocytophaga", "g__Fusobacterium","g__Gemella","g__Granulicatella","g__Haemophilus","g__Lautropia","g__Neisseria","g__Parvimonas","g__Porphyromonas","g__Prevotella","g__Rothia","g__Saccharibacteria_(TM7)_[G-1]","g__Selenomonas","g__Streptococcus","g__Treponema","g__Tannerella","g__Veillonella")
+
+#Filter data.frame for Visualization, all data is still used in statistical calculations
+SB_asv_fra_glom_genus_df_goi <- filter(SB_asv_fra_glom_genus_df, Genus %in% Genus_oi)
+
+pfig5DE <- ggplot(SB_asv_fra_glom_genus_df_goi, aes(x = as.factor(Day) , y = Abundance)) + xlab("Day") + ylab("Relative Abundance (%)") + 
+      theme(text=element_text(size = 8,face="bold")) + 
+      theme(axis.title = element_text(size = 8), axis.text = element_text(size = 8)) + facet_wrap(~Genus, scales = "free_y") +
+      stat_summary(na.rm=T,fun=mean, aes(group=Responders, color = Responders), shape = NA) +
+      labs(fill="") +  theme(legend.text = element_text(colour="Black", size = 4)) + 
+      theme(legend.title = element_text(colour="Black", size = 4, face = "bold")) + 
+      annotate("rect", xmin = 1.6, xmax = 6.4, ymin = -Inf, ymax = Inf, alpha=0.1) +
+      geom_smooth(aes(group = Responders, color = Responders), size = 1, method = "loess", se = TRUE, alpha = 0.1)
+pfig5DE
+
+#Streptococcus
+SB_asv_fra_glom_genus_df_goi_strep <- filter(SB_asv_fra_glom_genus_df_goi, Genus == "g__Streptococcus")
+
+pfig5F_Genus <- ggplot(SB_asv_fra_glom_genus_df_goi_strep, aes(x = as.factor(Day), y = Abundance)) +xlab("Day") + ylab("Relative Abundance (%)") + 
+      theme(text=element_text(size = 8,face="bold")) + 
+      theme(axis.title = element_text(size = 8), axis.text = element_text(size = 8)) + facet_wrap(~Genus, scales = "free_y") +
+      stat_summary(na.rm=T, fun=mean, aes(group=Responders, colour = Responders), shape = NA) +
+      labs(fill="") +  theme(legend.text = element_text(colour="Black", size = 4)) + 
+      theme(legend.title = element_text(colour="Black", size = 4, face = "bold")) + 
+      annotate("rect", xmin = 1.6, xmax = 6.4, ymin = -Inf, ymax = Inf, alpha=0.1) +
+      geom_smooth(aes(group = Responders, color = Responders), size = 1, method = "loess", se = TRUE, alpha = 0.1)
+pfig5F_Genus
+
+#Translate Count Data by Addition of a Pseudo Count
+setord_tp = transform_sample_counts(setord, function(x) (x + 0.000001 - min(x)))
+
+#Transform Count Data with Pseudo Counts using the Centered Log Ratio (CLR)
+SB_asv_f_tp_clr <- microbiome::transform(setord_tp, "clr")
+
+#Remove Controls
+SB_asv_f_tp_clr_noC <- subset_samples(SB_asv_f_tp_clr, Responders != "Control")
+
+#Melt to a data.frame
+SB_asv_f_tp_clr_noC_df <- psmelt(SB_asv_f_tp_clr_noC)
+
+my_comparisons <- list(c("Test High Responders","Test Low Responders"), c("Test Low Responders","Test Slow Responders"), c("Test High Responders","Test Slow Responders"), c("Test High Responders","Control"),c("Control","Test Low Responders"),c("Control","Test Slow Responders"))
+
+#Filter for Species of Interest for Visulaization, All Data Still Used in Calcualtions
+
+#Streptococcus sanguinis
+SB_asv_f_tp_clr_noC_df_sanguinis <- filter(SB_asv_f_tp_clr_noC_df, Species == "s__sanguinis")
+
+#Boxplots
+pfig5F_sanguinis <- ggplot(SB_asv_f_tp_clr_noC_df_sanguinis, aes(x = Responders, y = Abundance, group = Responders, color= Responders)) + facet_grid(Species~Day) +
+  geom_boxplot(lwd=0.5) +
+  geom_jitter(colour="grey", alpha=0.3, width=0.1) +
+  scale_y_log10() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1, size = 5)) + ylab("Center Log-Ratio Abundance") + xlab("") +
+  ggtitle("Streptococcus sanguinis", subtitle = "Pairwise Wilcox Test adjusted by FDR")
+
+stat.test.sang <- SB_asv_f_tp_clr_noC_df_sanguinis %>% 
+  group_by(Day,Species) %>% 
+  wilcox_test(Abundance ~ Responders, paired = FALSE, p.adjust.method = "fdr") %>%
+  add_y_position(step.increase = 0.12)
+stat.test.sang$y.position <- log10(stat.test.sang$y.position)
+
+pfig5F_sanguinis_w_stats <- pfig5F_sanguinis + stat_pvalue_manual(stat.test.sang, label = "p.adj.signif", y.position = "y.position", size =2, tip.length = 0.001)
+pfig5F_sanguinis_w_stats
+
+#Streptococcus oralis subsp. tigurinus clade 071
+SB_asv_f_tp_clr_noC_df_oralis <- filter(SB_asv_f_tp_clr_noC_df, Species == "s__oralis_subsp._tigurinus_clade_071")
+
+#Boxplots
+pfig5F_oralis <- ggplot(SB_asv_f_tp_clr_noC_df_oralis, aes(x = Responders, y = Abundance, group = Responders, color= Responders)) + facet_grid(Species~Day) +
+  geom_boxplot(lwd=0.5) +
+  geom_jitter(colour="grey", alpha=0.1, width=0.1) +
+  scale_y_log10() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1, size = 5)) + ylab("Center Log-Ratio Abundance") + xlab("") +
+  ggtitle("Streptococcus s__oralis_subsp._tigurinus_clade_071", subtitle = "Pairwise Wilcox Test adjusted by FDR")
+
+stat.test.oralis <- SB_asv_f_tp_clr_noC_df_oralis %>% 
+  group_by(Day,Species) %>% 
+  wilcox_test(Abundance ~ Responders, paired = FALSE, p.adjust.method = "fdr") %>%
+  add_y_position(step.increase = 0.12)
+stat.test.oralis$y.position <- log10(stat.test.oralis$y.position)
+
+pfig5F_oralis_w_stats <- pfig5F_oralis + stat_pvalue_manual(stat.test.oralis, label = "p.adj.signif", y.position = "y.position", size =2, tip.length = 0.001)
+pfig5F_oralis_w_stats
+```
+
+
