@@ -27,4 +27,4 @@ Comprehensive Chemokine Stats by Responder and Day (.xlsx)
 - Anova (Low Responders)
 - Anova (Low Overime - Baseline Day 0 to Day 21)
 
-> Mclean Lab: Contact kkerns85 at UW [dot] edu 
+Raw Reads (PE, .fastq) are available on NCBI SRA under Bioproject PRJNA615201
