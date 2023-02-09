@@ -1,8 +1,7 @@
 # Human Variation in Gingival Inflammation (HVGI) Study
 This repository serves to provide public access to data associated with the manuscript "Human Variation in Gingival Inflammation"
 
-Bamashmous S, Kotsakis GA., Kerns KA, Leroux BG, Zenobia C, Chen D, Trivedi H.M., McLean JS*, Darveau RP*. Human Variation in Gingival Inflammation. (2021) Proceedings of the National Academy of Sciences (PNAS). Accepted May 28, 2021
-Corresponding Author(s): Jeffrey McLean and Richard Darveau
+Bamashmous, S., Kotsakis, G. A., Kerns, K. A., Leroux, B. G., Zenobia, C., Chen, D., Trivedi, H. M., McLean, J. S*., & Darveau, R. P. (2021). Human variation in gingival inflammation. Proceedings of the National Academy of Sciences of the United States of America, 118(27), e2012578118. https://doi.org/10.1073/pnas.2012578118
 
 Files include data and code used to generate the figures and statistical analysis for both cytokine and microbiome data presented in the upcoming manuscript.
 
